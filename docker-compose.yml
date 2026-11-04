@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: notes_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-notes_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-notes_password}
+      POSTGRES_DB: ${POSTGRES_DB:-notes_db}
+    ports:
+      # Bind exclusively to loopback interface (127.0.0.1) to prevent LAN/external exposure
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - notes_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-notes_user} -d ${POSTGRES_DB:-notes_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  notes_postgres_data:
+    name: notes_postgres_data
