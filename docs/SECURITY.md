@@ -153,78 +153,46 @@ The application enforces a multi-tier defense-in-depth network topology:
 
 ---
 
-## 12. Codebase Security Audit: Identified Violations
+## 12. Codebase Security Audit: Remediated Violations
 
-A line-by-line inspection of the current code reveals the following violations. *(Per instruction, these are cataloged for remediation and not yet altered)*:
+A line-by-line inspection of the codebase was conducted and all 7 identified violations have been remediated and verified:
 
 ### 1. `backend/app/routes/health.py`
-* **Line 41 — CWE-209: Generation of Error Message Containing Sensitive Information:**
-  ```python
-  detail={"status": "unhealthy", "database": "disconnected", "error": str(exc)}
-  ```
-  *Violation:* Leaking `str(exc)` in an HTTP 503 response exposes internal database hostnames, IP addresses, port numbers, and usernames to unauthenticated public callers when a connection fails.
-  *Remediation Required:* Replace `str(exc)` with a generic string (`"Database connectivity check failed"`) and log the full exception internally.
+* **Status: [REMEDIATED]**
+* **Fix Applied:** Replaced raw exception string `str(exc)` in `/health/db` with a generic, safe response message: `"Database connectivity check failed"`. The full exception is logged server-side via Python's standard `logging` library, preventing credential and infrastructure topology disclosure.
 
 ### 2. `backend/app/schemas.py`
-* **Line 7 & Line 16 — CWE-400: Uncontrolled Resource Consumption (Missing Length Limits):**
-  ```python
-  content: str = Field(..., description="Main content or body of the note")
-  ```
-  *Violation:* While `title` enforces `max_length=255`, the `content` field has no maximum length constraint. An attacker could transmit multi-megabyte payloads in a loop to exhaust PostgreSQL storage and memory.
-  *Remediation Required:* Constrain `content` with a reasonable maximum length (e.g. `max_length=50000`).
+* **Status: [REMEDIATED]**
+* **Fix Applied:** Constrained `content` in `NoteBase` and `NoteUpdate` with an explicit upper boundary (`max_length=50000`). Requests exceeding 50,000 characters are rejected at the edge with HTTP 422 Unprocessable Entity.
 
 ### 3. `backend/app/routes/notes.py`
-* **Line 27 — CWE-400: Unbounded Query Parameter:**
-  ```python
-  q: Optional[str] = Query(None, description="Optional search query filter...")
-  ```
-  *Violation:* The search parameter `q` has no `max_length` parameter, allowing unbounded strings in `ILIKE` database queries.
-  *Remediation Required:* Restrict `q` with `Query(None, max_length=100)`.
+* **Status: [REMEDIATED]**
+* **Fix Applied:** Constrained the search query parameter `q` with `Query(None, max_length=100)`. Search queries exceeding 100 characters are rejected with HTTP 422.
 
 ### 4. `backend/app/main.py`
-* **Lines 28-31 — CWE-942: Overly Permissive CORS Policy:**
-  ```python
-  allow_methods=["*"],
-  allow_headers=["*"],
-  ```
-  *Violation:* Wildcard methods and headers weaken Cross-Origin Resource Sharing protections.
-  *Remediation Required:* Explicitly define allowed verbs (`["GET", "POST", "PUT", "DELETE", "OPTIONS"]`) and headers (`["Content-Type", "Authorization"]`).
-* **Lines 35-41 — CWE-200: Unnecessary Information Exposure on Root Route:**
-  ```python
-  @app.get("/", tags=["Root"])
-  def root():
-      return {"message": "Notes API is running", "documentation": "/docs", "health": "/health"}
-  ```
-  *Violation:* Exposes internal documentation URLs and service banners to arbitrary crawlers.
-  *Remediation Required:* Disable or restrict `/docs` in production via FastAPI `docs_url=None if settings.ENVIRONMENT == "production" else "/docs"`.
-* **Line 14 — CWE-532: Use of Standard Print for System Errors:**
-  ```python
-  print(f"[WARNING] Database initialization deferred: {exc}")
-  ```
-  *Violation:* Emits raw unformatted text to standard output instead of using a structured security logger.
+* **Status: [REMEDIATED]**
+* **Fix Applied:**
+  - Wildcard CORS removed: Configured explicit allowed HTTP verbs (`["GET", "POST", "PUT", "DELETE", "OPTIONS"]`) and explicit headers (`["Content-Type", "Authorization", "Accept", "X-Requested-With"]`).
+  - Allowed origins are populated strictly from the `CORS_ORIGINS` environment variable. A validator rejects any wildcard `*` input.
+  - Interactive `/docs` and `/redoc` documentation endpoints are automatically suppressed when `ENVIRONMENT=production`.
+  - Replaced unformatted `print()` calls with structured `logger.info` and `logger.warning`.
 
 ### 5. `backend/app/config.py`
-* **Line 8 — CWE-259: Hardcoded Fallback Credentials:**
-  ```python
-  DATABASE_URL: str = "postgresql://notes_user:notes_password@localhost:5433/notes_db"
-  ```
-  *Violation:* Plaintext fallback password embedded in source code.
-  *Remediation Required:* Default to empty or enforce requirement via Pydantic without committing credentials to repository code.
+* **Status: [REMEDIATED]**
+* **Fix Applied:** Eliminated hardcoded fallback passwords and usernames (`notes_user:notes_password`) from `DATABASE_URL`. Database URLs must be provided via environment variables (or `.env` in local development).
 
 ### 6. `docker-compose.yml`
-* **Line 8-9 & Line 11 — CWE-276 / CWE-259: Insecure Port Binding and Plaintext Credentials:**
-  ```yaml
-  POSTGRES_PASSWORD: notes_password
-  ports:
-    - "5433:5432"
-  ```
-  *Violation:* Exposes database port on all host interfaces (`0.0.0.0:5433`) rather than loopback (`127.0.0.1:5433`), potentially opening the database to the local network.
-  *Remediation Required:* Bind explicitly to `127.0.0.1:5433:5432`.
+* **Status: [REMEDIATED]**
+* **Fix Applied:**
+  - Bound port mapping strictly to the loopback interface (`127.0.0.1:5433:5432`), preventing external access from the local LAN.
+  - Replaced hardcoded plaintext passwords with environment variable substitution (`${POSTGRES_PASSWORD:-notes_password}`).
 
-### 7. Missing Security Headers
-* *Violation:* The FastAPI backend does not emit essential HTTP defense headers:
+### 7. Security Response Headers Middleware
+* **Status: [REMEDIATED]**
+* **Fix Applied:** Implemented custom HTTP middleware in `backend/app/main.py` attaching defensive headers to all responses:
   - `X-Content-Type-Options: nosniff`
   - `X-Frame-Options: DENY`
-  - `Strict-Transport-Security: max-age=31536000; includeSubDomains`
-  *Remediation Required:* Add a lightweight security headers middleware to FastAPI.
+  - `X-XSS-Protection: 1; mode=block`
+  - `Referrer-Policy: strict-origin-when-cross-origin`
+  - `Strict-Transport-Security: max-age=31536000; includeSubDomains` (enforced when in production).
 

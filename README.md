@@ -177,3 +177,21 @@ pytest -v
 | `GET` | `/api/notes/{id}` | Retrieve a specific note by ID |
 | `PUT` | `/api/notes/{id}` | Update note title and/or content |
 | `DELETE` | `/api/notes/{id}` | Delete a note by ID |
+
+---
+
+## 📚 Complete Project Documentation
+
+| Document | Description |
+|---|---|
+| [**`docs/PRD.md`**](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/PRD.md) | Product Requirements Document: user stories, acceptance criteria, and feature specifications. |
+| [**`docs/PHASES.md`**](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/PHASES.md) | Project Execution Phases & Roadmap: Phase 0 through Phase 5 transition gates. |
+| [**`docs/RULES.md`**](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/RULES.md) | Engineering Rules, Coding Standards & Constraints: Mandatory stack, prohibitions, security rules. |
+| [**`docs/DESIGN.md`**](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/DESIGN.md) | Design System & UI/UX Specification: Color palette, typography tokens, component geometry. |
+| [**`docs/MEMORY.md`**](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/MEMORY.md) | Project Memory & Context State Tracker: Living record of completed work and active focus. |
+| [**`docs/ARCHITECTURE.md`**](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/ARCHITECTURE.md) | Target Cloud Architecture: 3-tier AWS topology in `ap-south-1`, dual-origin CloudFront, and cost breakdown. |
+| [**`docs/STEP2_RUNBOOK.md`**](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/STEP2_RUNBOOK.md) | Manual AWS Console Runbook: Click-by-click provisioning guide with verification checks and teardown. |
+| [**`docs/DATABASE.md`**](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/DATABASE.md) | Database Specification: PostgreSQL schemas, query-specific indexes, migrations, and PITR backup plans. |
+| [**`docs/SECURITY.md`**](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/SECURITY.md) | Security Review & Audit History: Data classification, network boundaries, OWASP Top 10 checklist, and remediations. |
+| [**`docs/TESTING.md`**](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/TESTING.md) | Testing Strategy: Test pyramid, execution commands, and three chaos infrastructure proofs. |
+| [**`AGENTS.md`**](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/AGENTS.md) | AI Agent Guidelines: Quick-reference repository manual, commands, hard rules, and 5-step workflow. |

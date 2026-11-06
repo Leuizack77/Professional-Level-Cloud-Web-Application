@@ -9,7 +9,9 @@ The **Professional-Level Cloud Web Application** is a decoupled full-stack Notes
 
 | Task Type | Primary Document to Read First | Key Details to Check |
 |---|---|---|
-| Cloud infra, VPC, ALB, ASG, or deployment | [docs/ARCHITECTURE.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/ARCHITECTURE.md) | Subnet CIDRs, Security Group chains, monthly cost caps |
+| Cloud infra, VPC, ALB, ASG, or deployment | [docs/ARCHITECTURE.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/ARCHITECTURE.md), [docs/STEP2_RUNBOOK.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/STEP2_RUNBOOK.md) | Subnet CIDRs, Security Group chains, console runbook, costs |
+| Requirements, features, roadmap, phases | [docs/PRD.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/PRD.md), [docs/PHASES.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/PHASES.md) | User stories, acceptance criteria, phase gates |
+| Engineering rules, UI tokens, state memory | [docs/RULES.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/RULES.md), [docs/DESIGN.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/DESIGN.md), [docs/MEMORY.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/MEMORY.md) | Prohibitions, color tokens, living context tracker |
 | Database schema, indexes, migrations, backups | [docs/DATABASE.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/DATABASE.md) | PostgreSQL data types, query indexes, PITR recovery, no RLS |
 | Security reviews, credentials, CORS, OWASP | [docs/SECURITY.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/SECURITY.md) | Secrets Manager, WAF rate limits, pre-merge checklist |
 | Writing tests, verifying health, chaos proofs | [docs/TESTING.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/TESTING.md) | Test pyramid, `/health` independence, instance kill proofs |
