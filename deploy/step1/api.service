@@ -1,0 +1,31 @@
+# ==============================================================================
+# Systemd Service Template — Notes API (Step 1 Single Server)
+# Runs FastAPI process bound to loopback 127.0.0.1:8000 behind local Nginx proxy
+# Target Path on Server: /etc/systemd/system/notes-api.service
+# ==============================================================================
+
+[Unit]
+Description=Notes Application FastAPI Backend Service
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/var/www/notes-app/backend
+EnvironmentFile=/var/www/notes-app/backend/.env
+ExecStart=/var/www/notes-app/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=notes-api
+
+# Security Hardening Sandbox
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target

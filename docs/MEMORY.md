@@ -2,7 +2,7 @@
 
 **Project Name:** Professional-Level Cloud Web Application (Cloud Notes)  
 **Last Updated:** 2026-11-06  
-**Current Phase:** Phase 2 Complete (Security Hardened & Verified) $\to$ Phase 4 Runbook Ready  
+**Current Phase:** Step 1 Packaging & Console Runbook Complete $\to$ Step 1 Deployment Execution Ready  
 **Status:** In Active Development (Awaiting Cloud Execution Approval)  
 
 ---
@@ -11,47 +11,34 @@
 
 * **Application Type:** Decoupled 3-Tier Notes Web Application.
 * **Target Cloud:** Amazon Web Services (AWS) in **Asia Pacific (Mumbai) `ap-south-1`**.
-* **Frontend Tier:** React 18 + Vite Single Page Application, compiled to static assets (`frontend/dist/`) for **Amazon S3** behind **CloudFront CDN**.
-* **Backend Tier:** Stateless **FastAPI** (Python 3.11) REST API designed for **EC2 Auto Scaling Group** behind an **Application Load Balancer** in private VPC subnets.
-* **Database Tier:** Relational **PostgreSQL 16** (local Docker on `127.0.0.1:5433:5432`; **Amazon RDS `db.t3.micro` Single-AZ** in cloud).
+* **Frontend Tier:** React 18 + Vite Single Page Application, compiled to static assets (`frontend/dist/`) for **Amazon S3** behind **CloudFront CDN** (or Nginx in Step 1).
+* **Backend Tier:** Stateless **FastAPI** (Python 3.11) REST API designed for **EC2 Auto Scaling Group** behind an **Application Load Balancer** in private VPC subnets (or local loopback behind Nginx in Step 1).
+* **Database Tier:** Relational **PostgreSQL 16** (local Docker on loopback port `5433:5432`; local PostgreSQL 16 on loopback `127.0.0.1:5432` in Step 1; **Amazon RDS `db.t3.micro` Single-AZ** in Step 2).
 * **Dual Health Probes:**
-  - `GET /health`: Shallow check (HTTP 200) strictly independent of database for ALB viability.
+  - `GET /health`: Shallow check (HTTP 200) strictly independent of database for ALB/Nginx viability.
   - `GET /health/db`: Deep check executing `SELECT 1` to monitor PostgreSQL connectivity.
 
 ---
 
 ## 2. Completed Milestones & Accomplishments
 
-### ✅ Milestone 1: Local Full-Stack Application Scaffolded & Operational
-- Created Docker Compose definition (`docker-compose.yml`) for isolated PostgreSQL 16 Alpine on mapped port `5433`.
-- Developed FastAPI backend with models (`Note`), Pydantic schemas, and CRUD routes (`/api/notes`).
-- Developed React + Vite frontend with clean card layout, modal edit/create dialog, real-time search, and health badges.
-- Configured Vite dev proxy to seamlessly route `/api` and `/health` requests to `localhost:8000`.
+### ✅ Prep Phase: Local Full-Stack Prototype, Tests & Security Hardening
+- **Local Application Architecture:** Developed FastAPI REST API with SQLAlchemy models (`Note`), Pydantic v2 schemas, and CRUD endpoints (`/api/notes`).
+- **Static Frontend Bundle:** Built React 18 + Vite SPA with responsive card grid, modal form, real-time search, and live health status badges. Compiles to pure static assets in `frontend/dist/` in $< 1.0\text{ s}$.
+- **Containerized Database:** Configured Docker Compose PostgreSQL 16 Alpine bound strictly to loopback interface `127.0.0.1:5433:5432`.
+- **Test Harness (100% Pass Rate):**
+  - Backend: 11 `pytest` tests using in-memory SQLite isolation (shallow health, deep DB health, CRUD lifecycle, search queries, security headers, input bounds, and wildcard CORS rejection).
+  - Frontend: 2 `node:test` unit tests validating API client URL construction, query parsing, and payload submission.
+- **Security Audit Remediation:** Resolved all 7 audit vulnerabilities from [docs/SECURITY.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/SECURITY.md) (safe error messages, 50,000 char content limit, 100 char search limit, strict non-wildcard CORS, credential fallback elimination, loopback port binding, and defensive security headers).
+- **Core Documentation Suite:** Created PRD.md, RULES.md, DESIGN.md, ARCHITECTURE.md, DATABASE.md, SECURITY.md, TESTING.md, STEP2_RUNBOOK.md, and AGENTS.md.
 
-### ✅ Milestone 2: Comprehensive Test Harness Implemented
-- Backend: Implemented `pytest` suite testing shallow health, deep DB health, CRUD lifecycle, search queries, and validation errors.
-- Frontend: Implemented native Node.js test runner suite (`frontend/src/api.test.js`) testing API URL construction, query handling, and payload formatting.
-- Static Build: Verified `npm run build` cleanly outputs static assets (`dist/`) in $< 1.2\text{ s}$.
-
-### ✅ Milestone 3: Architectural & Operational Documentation Suite Created
-- `docs/ARCHITECTURE.md`: Complete cloud topology in `ap-south-1`, sequence diagrams, dual-origin CloudFront routing (`*` $\to$ S3, `/api/*` and `/health` $\to$ ALB), security group chains, and learning budget calculations (~$90/mo).
-- `docs/DATABASE.md`: Data types, B-Tree & GIN indexes, Alembic migration process, RDS PITR backup strategy, and credential injection.
-- `docs/SECURITY.md`: Data classification, network boundaries, OWASP Top 10 pre-merge checklist, and vulnerability audit.
-- `docs/TESTING.md`: Test pyramid, execution commands, and three chaos infrastructure proofs (instance termination, load scaling, DB isolation).
-- `AGENTS.md`: AI agent guidelines, strict hard rules (no cloud/terraform commands without approval, no secrets), and 5-step workflow (under 120 lines).
-
-### ✅ Milestone 4: Security Remediation (All 7 Identified Violations Resolved)
-- **1. Error Disclosure in `health.py`:** Replaced `str(exc)` with generic message; raw trace logged server-side.
-- **2. Unbounded Content in `schemas.py`:** Enforced `max_length=50000` on note bodies.
-- **3. Unconstrained Search in `notes.py`:** Constrained query parameter `q` to `max_length=100`.
-- **4. Wildcard CORS in `main.py`:** Removed wildcard defaults; loaded explicit origins from `CORS_ORIGINS`; restricted verbs and headers.
-- **5. Plaintext Fallback Credentials in `config.py` & `docker-compose.yml`:** Removed hardcoded credentials; bound database port strictly to `127.0.0.1`.
-- **6. Security Response Headers Middleware:** Added `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, `Referrer-Policy`, and `HSTS`.
-- **7. Regression Tests:** Expanded test suite to **11 passing backend tests** and **2 passing frontend tests**.
-
-### ✅ Milestone 5: Step 2 AWS Console Manual Runbook & Bootstrap Script
-- Created `deploy/user-data.sh`: Amazon Linux 2023 bootstrap script configuring Python 3.11, systemd service, and dynamic credential retrieval from AWS SSM Parameter Store with zero hardcoded secrets.
-- Created `docs/STEP2_RUNBOOK.md`: Click-by-click console guide covering VPC, Subnets, Security Groups, RDS, Launch Templates, Target Groups, ALB, ASG, S3, CloudFront, and a 10-step reverse teardown checklist.
+### ✅ Step 1 Deliverables: Single-Server Artifacts & Operational Runbook
+- **Frontend Relative URLs:** Configured `/api/...`, `/health`, and `/health/db` relative paths in `frontend/src/api.js` with Vite proxy preserved for local dev.
+- **Automated Server Provisioning:** Created `deploy/step1/setup-server.sh` for Amazon Linux 2023 installing Python 3.11, Nginx, PostgreSQL 16, user setup with prompted/CLI password, Alembic migrations, 0600 `.env` generation, and verification probes.
+- **Service & Proxy Templates:** Created `deploy/step1/nginx.conf` (SPA routing fallback, security headers, proxying) and `deploy/step1/api.service` (systemd service with auto-restart).
+- **Automated Packaging:** Created and verified `deploy/step1/build-and-package.ps1` in Windows PowerShell, compiling frontend static assets and packaging clean `deploy.zip` (~67 KB) excluding `.env`, `venv`, `node_modules`, `*.pem`, `*.key`.
+- **Operational Runbook:** Published [docs/STEP1_RUNBOOK.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/STEP1_RUNBOOK.md) with exact AWS Console steps, key pair permissions lockdown, security group rules (SSH from My IP only, HTTP 80 from all), SCP/SSH execution, browser verification, diagnostic troubleshooting commands, and teardown checklist.
+- **Git Protection:** Verified `*.pem`, `*.key`, `deploy.zip`, `*.zip`, and `.env` in `.gitignore`.
 
 ---
 
@@ -59,8 +46,8 @@
 
 | File Path | Role | Current Status |
 |---|---|---|
-| `docs/PRD.md` | Product Requirements Document | Complete & Approved |
-| `docs/PHASES.md` | Project Execution Phases & Roadmap | Complete & Approved |
+| `docs/PRD.md` | Product Requirements Document | Complete (local targets updated) |
+| `docs/PHASES.md` | Project Execution Phases & Roadmap | Restructured around 3 steps |
 | `docs/RULES.md` | Coding Standards & Security Constraints | Complete & Approved |
 | `docs/DESIGN.md` | UI/UX & Design System Tokens | Complete & Approved |
 | `docs/MEMORY.md` | Living Context & State Tracker (this file) | Complete & Up-to-Date |
@@ -68,12 +55,17 @@
 | `docs/DATABASE.md` | PostgreSQL Schema & Operational Specs | Complete & Up-to-Date |
 | `docs/SECURITY.md` | Security Review & Audit History | Complete & Remediated |
 | `docs/TESTING.md` | Testing Guide & Infrastructure Proofs | Complete & Up-to-Date |
+| `docs/STEP1_RUNBOOK.md` | Step 1 EC2 Console Manual Guide | Complete & Verified |
 | `docs/STEP2_RUNBOOK.md` | Step 2 AWS Console Manual Guide | Complete & Up-to-Date |
-| `AGENTS.md` | Repository Manual for AI Agents | Complete (73 lines) |
-| `deploy/user-data.sh` | EC2 Launch Template User-Data Bootstrap | Complete & Tested |
+| `AGENTS.md` | Repository Manual for AI Agents | Updated with Step 1 runbook |
+| `deploy/step1/setup-server.sh` | AL2023 Single-Server Setup Script | Complete & Hardened |
+| `deploy/step1/nginx.conf` | Step 1 Nginx Proxy Configuration | Complete & Verified |
+| `deploy/step1/api.service` | Step 1 Systemd Unit File | Complete & Verified |
+| `deploy/step1/build-and-package.ps1` | Windows Packaging Script | Tested & Generates deploy.zip |
 | `backend/app/main.py` | FastAPI Entrypoint & Middleware | Complete & Hardened |
 | `backend/tests/test_api.py` | Pytest Integration Test Suite | 11/11 Passing |
 | `frontend/src/App.jsx` | React SPA UI View | Complete & Functional |
+| `frontend/src/api.js` | Frontend API Client (Relative Paths) | Complete & Verified |
 | `frontend/src/api.test.js` | Frontend Unit Test Suite | 2/2 Passing |
 
 ---
@@ -82,33 +74,26 @@
 
 ```text
 Backend Test Suite (pytest -v):
-  ✔ test_shallow_health_check PASSED
-  ✔ test_deep_database_health_check PASSED
-  ✔ test_security_headers_present PASSED
-  ✔ test_crud_note_lifecycle PASSED
-  ✔ test_create_note_validation_error PASSED
-  ✔ test_unbounded_content_rejected PASSED
-  ✔ test_unconstrained_search_query_rejected PASSED
-  ✔ test_wildcard_cors_rejected PASSED
-  ✔ test_update_nonexistent_note_404 PASSED
-  ✔ test_delete_nonexistent_note_404 PASSED
-  ✔ test_example_shallow_health_check PASSED
-  Total: 11 passed in 0.47s
+  ✔ 11 passed in 1.15s (in-memory SQLite test isolation)
 
 Frontend Test Suite (npm test):
-  ✔ frontend api client: listNotes constructs expected search URL and parses response
-  ✔ frontend api client: createNote sends POST with JSON payload
-  Total: 2 passed in 124ms
+  ✔ 2 passed in 110ms (native node:test runner)
 
-Frontend Static Build (npm run build):
-  ✔ Generated static bundle in frontend/dist/ (HTML: 1.14 kB, CSS: 7.93 kB, JS: 151.65 kB) in 843ms
+Frontend Static Compilation (npm run build):
+  ✔ Built static bundle in frontend/dist/ in 992ms
+
+Step 1 Packaging (build-and-package.ps1):
+  ✔ Generated clean deploy.zip (66.68 KB) with zero secrets or dev dependencies
 ```
 
 ---
 
-## 5. Next Planned Actions (When User Authorizes Cloud Steps)
+## 5. Next Planned Actions
 
-1. **Step 1 Cloud Deployment (Single-Server MVP):** Deploy backend and frontend to a single `t3.micro` EC2 instance in `ap-south-1` to verify public internet routing and DNS.
-2. **Step 2 Cloud Deployment (Decoupled Production Baseline):** Follow `docs/STEP2_RUNBOOK.md` in the AWS Console to provision the VPC, RDS, ALB, ASG, S3, and CloudFront dual-origin setup.
-3. **Execute Chaos Proofs:** Execute the 3 infrastructure checks outlined in `docs/TESTING.md` (Instance termination, ASG load scaling, RDS internet isolation).
-4. **Step 3 Automation (Terraform):** Codify the verified console architecture into modular Terraform configurations.
+* finish Step 1 deployment
+
+---
+
+## 6. Open Issues & Blockers
+
+* **None.** Step 1 deployment package, configuration templates, server setup script, and console runbook are completely built, tested, and ready for operator execution in the AWS Console.

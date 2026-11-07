@@ -41,10 +41,10 @@ While conventional tutorial applications are deployed as monolithic scripts on a
 
 ## 4. Non-Functional Requirements (NFRs)
 
-### 4.1 Performance & Latency
-- **Shallow Health Check:** `GET /health` must respond in $< 10\text{ ms}$ under all conditions to prevent ALB health check timeouts.
-- **API Response Time:** CRUD operations must complete in $< 50\text{ ms}$ under normal database conditions.
-- **Frontend Asset Loading:** First Contentful Paint (FCP) $< 1.0\text{ s}$ via CloudFront edge caching.
+### 4.1 Performance & Latency (Local Targets, Not Guarantees)
+- **Shallow Health Check:** `GET /health` local target $< 10\text{ ms}$ under baseline conditions (designed as an engineering target to prevent ALB health check timeouts, not an absolute cloud SLA guarantee).
+- **API Response Time:** CRUD operations local target $< 50\text{ ms}$ under normal database load (engineering target, not a guarantee).
+- **Frontend Asset Loading:** First Contentful Paint (FCP) local target $< 1.0\text{ s}$ via CloudFront edge distribution (target, dependent on client network and edge proximity).
 
 ### 4.2 High Availability & Resilience
 - **Multi-AZ Readiness:** Architecture must support distribution across at least two Availability Zones (`ap-south-1a`, `ap-south-1b`).

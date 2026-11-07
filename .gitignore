@@ -45,6 +45,11 @@ frontend/.vite/
 *.key
 *.cert
 
+# Deployment Artifacts
+deploy.zip
+*.zip
+*.tar.gz
+
 # Operating System & IDE
 .DS_Store
 Thumbs.db

@@ -9,7 +9,7 @@ The **Professional-Level Cloud Web Application** is a decoupled full-stack Notes
 
 | Task Type | Primary Document to Read First | Key Details to Check |
 |---|---|---|
-| Cloud infra, VPC, ALB, ASG, or deployment | [docs/ARCHITECTURE.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/ARCHITECTURE.md), [docs/STEP2_RUNBOOK.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/STEP2_RUNBOOK.md) | Subnet CIDRs, Security Group chains, console runbook, costs |
+| Cloud infra, VPC, ALB, ASG, or deployment | [docs/ARCHITECTURE.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/ARCHITECTURE.md), [docs/STEP1_RUNBOOK.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/STEP1_RUNBOOK.md), [docs/STEP2_RUNBOOK.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/STEP2_RUNBOOK.md) | Subnet CIDRs, Security Group chains, console runbooks, costs |
 | Requirements, features, roadmap, phases | [docs/PRD.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/PRD.md), [docs/PHASES.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/PHASES.md) | User stories, acceptance criteria, phase gates |
 | Engineering rules, UI tokens, state memory | [docs/RULES.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/RULES.md), [docs/DESIGN.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/DESIGN.md), [docs/MEMORY.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/MEMORY.md) | Prohibitions, color tokens, living context tracker |
 | Database schema, indexes, migrations, backups | [docs/DATABASE.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/DATABASE.md) | PostgreSQL data types, query indexes, PITR recovery, no RLS |
@@ -23,7 +23,7 @@ The **Professional-Level Cloud Web Application** is a decoupled full-stack Notes
 
 ### Local Infrastructure
 ```powershell
-docker compose up -d    # Starts local PostgreSQL 16 on port 5433
+docker compose up -d    # Starts local PostgreSQL 16 on port 5433 (127.0.0.1)
 docker compose down     # Stops local PostgreSQL container
 ```
 
@@ -45,15 +45,16 @@ npm run build      # Compile production static bundle into dist/ (S3 target)
 
 ---
 
-## 4. Hard Rules for AI Agents
+## 4. Hard Rules & Policy Enforcement
 
-1. **No Cloud or Terraform Actions:** Never run cloud CLI commands (`aws`, `az`, `gcloud`) or `terraform apply`/`destroy`.
+All detailed coding standards, prohibitions, and architectural boundaries are defined in [docs/RULES.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/RULES.md), and security/cryptographic guidelines are defined in [docs/SECURITY.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/SECURITY.md). Agents must follow them without departure:
+
+1. **No Cloud or Terraform Actions:** Never run cloud CLI commands (`aws`, `az`, `gcloud`) or `terraform apply`/`destroy` without explicit user instruction.
 2. **Never Commit Secrets:** Never hardcode or commit `.env` files, passwords, or credentials. Use `.env.example`.
 3. **Ask Before Adding Tools:** Do not install unapproved packages, libraries, or external services without user consent.
 4. **Strict Health Probe Decoupling:** Keep `GET /health` independent of the database; reserve database checks for `GET /health/db`.
 5. **Preserve Decoupled Tier Architecture:** Frontend must compile to pure static assets for S3; backend must remain a stateless API.
-6. **SQLAlchemy Safety:** Never construct raw SQL strings with user input; always use parameterized ORM queries.
-7. **Document Integrity:** Keep markdown docs updated whenever schemas, ports, or architectural patterns change.
+6. **Session Handoff & Memory Protocol:** At the end of every session, update [docs/MEMORY.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/MEMORY.md) with what was done, what is next, and open issues. Never write secrets, account IDs or IPs in it.
 
 ---
 
@@ -64,12 +65,11 @@ flowchart LR
     S1["1. Read Relevant Doc"] --> S2["2. Plan Changes"]
     S2 --> S3["3. Implement Code"]
     S3 --> S4["4. Run Test Suites"]
-    S4 --> S5["5. Verify & Document"]
+    S4 --> S5["5. Update Memory & Docs"]
 ```
 
-1. **Read Relevant Documentation:** Review the matching document in `docs/` before editing any code or configuration.
+1. **Read Relevant Documentation:** Review matching document in `docs/` before editing code or configuration.
 2. **Formulate a Minimal Plan:** Design changes that adhere to existing architecture, schemas, and security boundaries.
 3. **Implement Changes:** Write clean, modular code with strict input validation and appropriate error handling.
 4. **Execute Tests:** Run both `backend` (`pytest`) and `frontend` (`npm test` and `npm run build`) to ensure zero regressions.
-5. **Verify Definition-of-Done:** Ensure `/health` remains fast and decoupled, no secrets are exposed, and docs are updated.
-
+5. **Update Memory & Docs:** Verify definition-of-done, update docs, and record session state in [docs/MEMORY.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/MEMORY.md).
