@@ -11,7 +11,7 @@ class Settings(BaseSettings):
         default="",
         description="Database connection URL. Must be supplied via environment variable.",
     )
-    HOST: str = "0.0.0.0"
+    HOST: str = "127.0.0.1"
     PORT: int = 8000
     ENVIRONMENT: str = "development"
 

@@ -258,11 +258,11 @@ Run curl checks against the public IP:
 ```powershell
 # 1. Shallow Health Check (Checks FastAPI process via Nginx)
 curl -i http://<EC2_PUBLIC_IP>/health
-# Expected: HTTP/1.1 200 OK -> {"status":"ok"}
+# Expected: HTTP/1.1 200 OK -> {"status":"healthy","service":"notes-api","timestamp":"..."}
 
 # 2. Deep Health Check (Checks PostgreSQL database connectivity via Nginx)
 curl -i http://<EC2_PUBLIC_IP>/health/db
-# Expected: HTTP/1.1 200 OK -> {"status":"ok","database":"connected"}
+# Expected: HTTP/1.1 200 OK -> {"status":"healthy","database":"connected","timestamp":"..."}
 
 # 3. List Notes API Endpoint
 curl -i http://<EC2_PUBLIC_IP>/api/notes

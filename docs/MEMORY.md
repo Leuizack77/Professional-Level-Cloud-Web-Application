@@ -1,8 +1,8 @@
 # Project Memory & Context State Tracker
 
 **Project Name:** Professional-Level Cloud Web Application (Cloud Notes)  
-**Last Updated:** 2026-11-06  
-**Current Phase:** Step 1 Packaging & Console Runbook Complete $\to$ Step 1 Deployment Execution Ready  
+**Last Updated:** 2026-11-07  
+**Current Phase:** Step 1 Pre-Deployment Audit & Hardening Complete $\to$ Step 1 Deployment Execution Ready  
 **Status:** In Active Development (Awaiting Cloud Execution Approval)  
 
 ---
@@ -32,13 +32,14 @@
 - **Security Audit Remediation:** Resolved all 7 audit vulnerabilities from [docs/SECURITY.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/SECURITY.md) (safe error messages, 50,000 char content limit, 100 char search limit, strict non-wildcard CORS, credential fallback elimination, loopback port binding, and defensive security headers).
 - **Core Documentation Suite:** Created PRD.md, RULES.md, DESIGN.md, ARCHITECTURE.md, DATABASE.md, SECURITY.md, TESTING.md, STEP2_RUNBOOK.md, and AGENTS.md.
 
-### ✅ Step 1 Deliverables: Single-Server Artifacts & Operational Runbook
-- **Frontend Relative URLs:** Configured `/api/...`, `/health`, and `/health/db` relative paths in `frontend/src/api.js` with Vite proxy preserved for local dev.
-- **Automated Server Provisioning:** Created `deploy/step1/setup-server.sh` for Amazon Linux 2023 installing Python 3.11, Nginx, PostgreSQL 16, user setup with prompted/CLI password, Alembic migrations, 0600 `.env` generation, and verification probes.
-- **Service & Proxy Templates:** Created `deploy/step1/nginx.conf` (SPA routing fallback, security headers, proxying) and `deploy/step1/api.service` (systemd service with auto-restart).
-- **Automated Packaging:** Created and verified `deploy/step1/build-and-package.ps1` in Windows PowerShell, compiling frontend static assets and packaging clean `deploy.zip` (~67 KB) excluding `.env`, `venv`, `node_modules`, `*.pem`, `*.key`.
-- **Operational Runbook:** Published [docs/STEP1_RUNBOOK.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/STEP1_RUNBOOK.md) with exact AWS Console steps, key pair permissions lockdown, security group rules (SSH from My IP only, HTTP 80 from all), SCP/SSH execution, browser verification, diagnostic troubleshooting commands, and teardown checklist.
-- **Git Protection:** Verified `*.pem`, `*.key`, `deploy.zip`, `*.zip`, and `.env` in `.gitignore`.
+### ✅ Step 1 Deliverables & Pre-Deployment Audit Hardening
+- **Pre-Deployment Audit:** Completed complete verification against all 15 audit criteria across setup scripts, configuration files, and backend routes.
+- **Credential Protection:** Eliminated password echo in `setup-server.sh`. Enforced URL-encoding for `DATABASE_URL` via Python `urllib.parse.quote_plus` and parameterized `psql -v v_pass` execution to safely support special characters.
+- **PostgreSQL 16 Loopback & Auth Hardening:** Configured explicit `listen_addresses = '127.0.0.1'` in `postgresql.conf`, SCRAM-SHA-256 in `pg_hba.conf`, and ownership of `public` schema in `notes_db`.
+- **Nginx & Header Integrity:** Corrected `location /api` matching, set `proxy_intercept_errors off` to preserve JSON 404 responses from API, removed top-level `error_page 404 /index.html`, and re-declared security headers in static asset regex location to prevent Nginx header stripping.
+- **Filesystem Permissions:** Configured `755` on app root and `frontend/dist`, `750` on `backend/`, and `600` on `.env`.
+- **Packaging Safety:** Updated `build-and-package.ps1` with comprehensive exclusion lists (`.env*`, `*.pem`, `*.key`, `*.cert`, `venv`, `node_modules`, caches). Rebuilt and verified `deploy.zip` (~67.7 KB).
+- **Automated Verification:** Added `exit 1` to failed health probes in `setup-server.sh` and aligned `STEP1_RUNBOOK.md` with actual JSON response schemas.
 
 ---
 
@@ -46,7 +47,7 @@
 
 | File Path | Role | Current Status |
 |---|---|---|
-| `docs/PRD.md` | Product Requirements Document | Complete (local targets updated) |
+| `docs/PRD.md` | Product Requirements Document | Complete & Approved |
 | `docs/PHASES.md` | Project Execution Phases & Roadmap | Restructured around 3 steps |
 | `docs/RULES.md` | Coding Standards & Security Constraints | Complete & Approved |
 | `docs/DESIGN.md` | UI/UX & Design System Tokens | Complete & Approved |
@@ -55,14 +56,15 @@
 | `docs/DATABASE.md` | PostgreSQL Schema & Operational Specs | Complete & Up-to-Date |
 | `docs/SECURITY.md` | Security Review & Audit History | Complete & Remediated |
 | `docs/TESTING.md` | Testing Guide & Infrastructure Proofs | Complete & Up-to-Date |
-| `docs/STEP1_RUNBOOK.md` | Step 1 EC2 Console Manual Guide | Complete & Verified |
+| `docs/STEP1_RUNBOOK.md` | Step 1 EC2 Console Manual Guide | Complete & Aligned |
 | `docs/STEP2_RUNBOOK.md` | Step 2 AWS Console Manual Guide | Complete & Up-to-Date |
 | `AGENTS.md` | Repository Manual for AI Agents | Updated with Step 1 runbook |
-| `deploy/step1/setup-server.sh` | AL2023 Single-Server Setup Script | Complete & Hardened |
-| `deploy/step1/nginx.conf` | Step 1 Nginx Proxy Configuration | Complete & Verified |
-| `deploy/step1/api.service` | Step 1 Systemd Unit File | Complete & Verified |
-| `deploy/step1/build-and-package.ps1` | Windows Packaging Script | Tested & Generates deploy.zip |
-| `backend/app/main.py` | FastAPI Entrypoint & Middleware | Complete & Hardened |
+| `deploy/step1/setup-server.sh` | AL2023 Single-Server Setup Script | Audited & Hardened |
+| `deploy/step1/nginx.conf` | Step 1 Nginx Proxy Configuration | Audited & Hardened |
+| `deploy/step1/api.service` | Step 1 Systemd Unit File | Audited & Hardened |
+| `deploy/step1/build-and-package.ps1` | Windows Packaging Script | Audited & Generates Clean ZIP |
+| `backend/app/config.py` | Application Configuration (HOST=127.0.0.1) | Audited & Hardened |
+| `backend/app/main.py` | FastAPI Entrypoint & Scheme-Aware HSTS | Audited & Hardened |
 | `backend/tests/test_api.py` | Pytest Integration Test Suite | 11/11 Passing |
 | `frontend/src/App.jsx` | React SPA UI View | Complete & Functional |
 | `frontend/src/api.js` | Frontend API Client (Relative Paths) | Complete & Verified |
@@ -74,16 +76,19 @@
 
 ```text
 Backend Test Suite (pytest -v):
-  ✔ 11 passed in 1.15s (in-memory SQLite test isolation)
+  ✔ 11 passed in 1.43s (in-memory SQLite test isolation)
 
 Frontend Test Suite (npm test):
-  ✔ 2 passed in 110ms (native node:test runner)
+  ✔ 2 passed in 115ms (native node:test runner)
 
 Frontend Static Compilation (npm run build):
-  ✔ Built static bundle in frontend/dist/ in 992ms
+  ✔ Built static bundle in frontend/dist/ in 785ms
+
+Bash Syntax Verification (bash -n setup-server.sh):
+  ✔ Clean syntax validation (Exit code 0)
 
 Step 1 Packaging (build-and-package.ps1):
-  ✔ Generated clean deploy.zip (66.68 KB) with zero secrets or dev dependencies
+  ✔ Generated deploy.zip (67.67 KB) verified 100% free of secrets, caches, and dev dependencies
 ```
 
 ---
@@ -96,4 +101,4 @@ Step 1 Packaging (build-and-package.ps1):
 
 ## 6. Open Issues & Blockers
 
-* **None.** Step 1 deployment package, configuration templates, server setup script, and console runbook are completely built, tested, and ready for operator execution in the AWS Console.
+* **None.** All 15 audit points verified and hardened. Step 1 deployment package, configuration templates, server setup script, and console runbook are completely ready for AWS Console provisioning.

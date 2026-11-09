@@ -76,8 +76,8 @@ try {
     New-Item -ItemType Directory -Path $StagingDeploy -Force | Out-Null
 
     # Define exclusion sets for backend files and directories
-    $ExcludedDirNames = @("venv", ".venv", "env", "__pycache__", ".pytest_cache", "node_modules", ".git")
-    $ExcludedExtensions = @(".pyc", ".pyo", ".pyd", ".sqlite3", ".db", ".pem", ".key", ".cert", ".log")
+    $ExcludedDirNames = @("venv", ".venv", "env", "__pycache__", ".pytest_cache", "node_modules", ".git", ".coverage", "htmlcov")
+    $ExcludedExtensions = @(".pyc", ".pyo", ".pyd", ".sqlite3", ".db", ".pem", ".key", ".cert", ".log", ".swp", ".swo", ".tmp")
 
     # Copy backend source tree
     $BackendSrc = Join-Path $RepoRoot "backend"
@@ -96,8 +96,8 @@ try {
         }
         if ($matchesExcludedDir) { return }
 
-        # Check if file starts with .env or matches key/pem
-        if ($item.Name -like ".env*" -or $item.Name -like "*.pem" -or $item.Name -like "*.key") {
+        # Check if file starts with .env or matches key/pem/cert
+        if ($item.Name -like ".env*" -or $item.Name -like "*.pem" -or $item.Name -like "*.key" -or $item.Name -like "*.cert") {
             return
         }
 

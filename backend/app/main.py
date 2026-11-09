@@ -48,7 +48,9 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    if settings.ENVIRONMENT == "production":
+    if settings.ENVIRONMENT == "production" and (
+        request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+    ):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 

@@ -6,8 +6,8 @@
 
 [Unit]
 Description=Notes Application FastAPI Backend Service
-After=network.target postgresql.service
-Wants=postgresql.service
+After=network.target postgresql-16.service postgresql.service
+Wants=postgresql-16.service postgresql.service
 
 [Service]
 Type=simple
