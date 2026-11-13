@@ -1,11 +1,11 @@
-# Step 2 Runbook: Manual Cloud Deployment Guide (AWS Console — ap-south-1)
+# Step 2 Runbook: Manual Cloud Deployment Guide (AWS Console — ap-southeast-2)
 
-A click-by-click manual AWS Console walkthrough to build the decoupled production-style Notes application in **Asia Pacific (Mumbai) `ap-south-1`**.
+A click-by-click manual AWS Console walkthrough to build the decoupled production-style Notes application in **Asia Pacific (Sydney) `ap-southeast-2`**.
 
 > [!IMPORTANT]
 > **Prerequisites Before Starting:**
 > 1. An active AWS account with administrative access.
-> 2. Region set to **Asia Pacific (Mumbai) `ap-south-1`** in the top-right navigation bar of the AWS Management Console.
+> 2. Region set to **Asia Pacific (Sydney) `ap-southeast-2`** in the top-right navigation bar of the AWS Management Console.
 > 3. Zero hardcoded secrets: Database credentials will be stored in AWS Systems Manager Parameter Store or Secrets Manager.
 > 4. Do not run automated cloud scripts or Terraform in this step; execute strictly via the AWS Console.
 
@@ -26,20 +26,20 @@ A click-by-click manual AWS Console walkthrough to build the decoupled productio
 ## Item 1: VPC, Subnets, Internet Gateway, NAT Gateway & Route Tables
 
 ### Step-by-Step Instructions
-1. Open the **VPC Console** at [https://ap-south-1.console.aws.amazon.com/vpc/home?region=ap-south-1](https://ap-south-1.console.aws.amazon.com/vpc/home?region=ap-south-1).
+1. Open the **VPC Console** at [https://ap-southeast-2.console.aws.amazon.com/vpc/home?region=ap-southeast-2](https://ap-southeast-2.console.aws.amazon.com/vpc/home?region=ap-southeast-2).
 2. Click **Create VPC**.
 3. Under **Resources to create**, select **VPC and more** (this auto-generates subnets, route tables, and gateways cleanly).
 4. Configure the parameters:
    - **Name tag auto-generation:** `notes-vpc`
    - **IPv4 CIDR block:** `10.0.0.0/16`
    - **Number of Availability Zones (AZs):** `2`
-   - **Customize AZs:** Select `ap-south-1a` and `ap-south-1b`.
-   - **Number of public subnets:** `2` (`10.0.1.0/24` in `ap-south-1a`, `10.0.2.0/24` in `ap-south-1b`).
+   - **Customize AZs:** Select `ap-southeast-2a` and `ap-southeast-2b`.
+   - **Number of public subnets:** `2` (`10.0.1.0/24` in `ap-southeast-2a`, `10.0.2.0/24` in `ap-southeast-2b`).
    - **Number of private subnets:** `4`
-     - Private App Subnet 1: `10.0.10.0/24` (`ap-south-1a`)
-     - Private App Subnet 2: `10.0.11.0/24` (`ap-south-1b`)
-     - Private DB Subnet 1: `10.0.20.0/24` (`ap-south-1a`)
-     - Private DB Subnet 2: `10.0.21.0/24` (`ap-south-1b`)
+     - Private App Subnet 1: `10.0.10.0/24` (`ap-southeast-2a`)
+     - Private App Subnet 2: `10.0.11.0/24` (`ap-southeast-2b`)
+     - Private DB Subnet 1: `10.0.20.0/24` (`ap-southeast-2a`)
+     - Private DB Subnet 2: `10.0.21.0/24` (`ap-southeast-2b`)
    - **NAT Gateways:** Select **In 1 AZ** (Learning budget: provisions 1 NAT Gateway in Public Subnet A).
    - **VPC Endpoints:** Select **None** (optional for this stage).
    - **DNS hostnames:** Check **Enable DNS hostnames**.
@@ -48,7 +48,7 @@ A click-by-click manual AWS Console walkthrough to build the decoupled productio
 
 ### 🔍 How to Verify
 * Go to **VPC** $\to$ **Your VPCs**: Confirm `notes-vpc` displays state **Available**.
-* Go to **VPC** $\to$ **NAT Gateways**: Confirm 1 NAT Gateway exists in `notes-vpc-subnet-public1-ap-south-1a` with status **Available**.
+* Go to **VPC** $\to$ **NAT Gateways**: Confirm 1 NAT Gateway exists in `notes-vpc-subnet-public1-ap-southeast-2a` with status **Available**.
 * Go to **VPC** $\to$ **Route Tables**:
   - The Public Route Table has a destination `0.0.0.0/0` targeted to the **Internet Gateway** (`igw-...`).
   - The Private Route Tables have a destination `0.0.0.0/0` targeted to the **NAT Gateway** (`nat-...`).
@@ -103,7 +103,7 @@ All ingress rules must reference peer security group IDs to guarantee least-priv
 ## Item 3: RDS PostgreSQL Database (Single-AZ, db.t3.micro, Private)
 
 ### Step-by-Step Instructions
-1. Open the **Amazon RDS Console** at [https://ap-south-1.console.aws.amazon.com/rds/home?region=ap-south-1](https://ap-south-1.console.aws.amazon.com/rds/home?region=ap-south-1).
+1. Open the **Amazon RDS Console** at [https://ap-southeast-2.console.aws.amazon.com/rds/home?region=ap-southeast-2](https://ap-southeast-2.console.aws.amazon.com/rds/home?region=ap-southeast-2).
 
 #### 3.1 Create DB Subnet Group
 * Click **Subnet groups** in the left sidebar $\to$ **Create DB Subnet Group**.
@@ -111,7 +111,7 @@ All ingress rules must reference peer security group IDs to guarantee least-priv
 * **Description:** `Private subnets for RDS PostgreSQL`
 * **VPC:** Select `notes-vpc`.
 * **Add subnets:**
-  - Availability Zones: Choose `ap-south-1a` and `ap-south-1b`.
+  - Availability Zones: Choose `ap-southeast-2a` and `ap-southeast-2b`.
   - Subnets: Select the two private DB subnets (`10.0.20.0/24` and `10.0.21.0/24`).
 * Click **Create**.
 
@@ -138,7 +138,7 @@ All ingress rules must reference peer security group IDs to guarantee least-priv
   - **DB Subnet group:** `notes-db-subnet-group`.
   - **Public access:** **No** (Critical: guarantees zero internet access).
   - **VPC security group:** Choose **Select existing** $\to$ Remove `default`, add `notes-sg-db`.
-  - **Availability Zone:** `ap-south-1a` (Single-AZ).
+  - **Availability Zone:** `ap-southeast-2a` (Single-AZ).
   - **Database port:** `5432`.
 * **Database authentication:** Password authentication.
 * **Additional configuration:**
@@ -161,7 +161,7 @@ All ingress rules must reference peer security group IDs to guarantee least-priv
 ### 🔍 How to Verify
 * On the RDS console, confirm `notes-db` status transitions to **Available**.
 * Under **Connectivity & security**, verify:
-  - **Endpoint:** Present (e.g., `notes-db.cxxxx.ap-south-1.rds.amazonaws.com`).
+  - **Endpoint:** Present (e.g., `notes-db.cxxxx.ap-southeast-2.rds.amazonaws.com`).
   - **Publicly accessible:** **No**.
   - **Security groups:** `notes-sg-db (active)`.
 
@@ -172,35 +172,35 @@ All ingress rules must reference peer security group IDs to guarantee least-priv
 ### Step-by-Step Instructions
 
 #### 4.1 Create EC2 Instance Role for Parameter Store Access
-1. Open the **IAM Console** $\to$ **Roles** $\to$ **Create role**.
+1. Open the **IAM Console** $\to$ **Roles** $\to$ **Create role** (or reuse existing `arn:aws:iam::494166748737:instance-profile/EC2-SSM-Role`).
 2. **Trusted entity type:** AWS service.
 3. **Use case:** EC2 $\to$ Click **Next**.
 4. **Permissions policies:**
    - Attach `AmazonSSMManagedInstanceCore` (allows AWS Systems Manager Session Manager access).
    - Click **Create policy** in a new tab:
      - Service: `SSM`
-     - Action: `GetParameter`
-     - Resource: `arn:aws:ssm:ap-south-1:<your_account_id>:parameter/notes-app/*`
+     - Action: `GetParameter`, `GetParameters`
+     - Resource: `arn:aws:ssm:ap-southeast-2:<your_account_id>:parameter/notes-app/*`
      - Policy Name: `NotesAppSSMReadPolicy`
      - Click **Create policy**.
    - Return to Role tab, refresh, and select `NotesAppSSMReadPolicy`.
 5. **Role name:** `notes-ec2-instance-role` $\to$ Click **Create role**.
 
 #### 4.2 Create Launch Template
-1. Open the **EC2 Console** at [https://ap-south-1.console.aws.amazon.com/ec2/home?region=ap-south-1](https://ap-south-1.console.aws.amazon.com/ec2/home?region=ap-south-1).
+1. Open the **EC2 Console** at [https://ap-southeast-2.console.aws.amazon.com/ec2/home?region=ap-southeast-2](https://ap-southeast-2.console.aws.amazon.com/ec2/home?region=ap-southeast-2).
 2. In left sidebar, select **Launch Templates** $\to$ **Create launch template**.
 3. **Launch template name:** `notes-api-template`
 4. **Template version description:** `v1 FastAPI backend template`
 5. **Auto Scaling guidance:** Check **Provide guidance to help me set up a template that I can use with EC2 Auto Scaling**.
 6. **Application and OS Images (AMI):**
-   - Select **Amazon Linux** $\to$ **Amazon Linux 2023 AMI** (64-bit x86_64, Free tier eligible).
+   - Select **Amazon Linux** $\to$ **Amazon Linux 2023 AMI** (`ami-062900c135ab91582`, 64-bit x86_64, Free tier eligible).
 7. **Instance type:** `t3.micro`.
 8. **Key pair:** Proceed without a key pair (access is managed via AWS SSM Session Manager for security).
 9. **Network settings:**
    - **Subnet:** Do not include in launch template (ASG will supply private subnets).
    - **Security groups:** Select existing security group $\to$ `notes-sg-app`.
 10. **Advanced details:**
-    - **IAM instance profile:** Select `notes-ec2-instance-role`.
+    - **IAM instance profile:** Select `notes-ec2-instance-role` (or `EC2-SSM-Role`).
     - **Detailed CloudWatch monitoring:** Leave disabled (optional).
     - **User data:** Paste the exact contents of [`deploy/user-data.sh`](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/deploy/user-data.sh).
 11. Click **Create launch template**.
@@ -228,7 +228,7 @@ All ingress rules must reference peer security group IDs to guarantee least-priv
    - **Protocol version:** HTTP1.
 4. **Health checks:**
    - **Health check protocol:** `HTTP`
-   - **Health check path:** `/health` (Our fast, DB-independent shallow check).
+   - **Health check path:** `/health` (Our fast, DB-independent shallow check; `/health/ready` can also be used).
    - **Advanced health check settings:**
      - Port: `Traffic port`
      - Healthy threshold: `2`
@@ -248,8 +248,8 @@ All ingress rules must reference peer security group IDs to guarantee least-priv
 4. **Network mapping:**
    - **VPC:** `notes-vpc`
    - **Mappings (select both public subnets):**
-     - `ap-south-1a`: Select `notes-vpc-subnet-public1-ap-south-1a`.
-     - `ap-south-1b`: Select `notes-vpc-subnet-public2-ap-south-1b`.
+     - `ap-southeast-2a`: Select `notes-vpc-subnet-public1-ap-southeast-2a`.
+     - `ap-southeast-2b`: Select `notes-vpc-subnet-public2-ap-southeast-2b`.
 5. **Security groups:**
    - Remove `default`.
    - Select `notes-sg-alb`.
@@ -261,7 +261,7 @@ All ingress rules must reference peer security group IDs to guarantee least-priv
 
 ### 🔍 How to Verify
 * In **Load Balancers**, verify `notes-alb` state is **Active**.
-* Copy the **DNS name** (e.g. `notes-alb-123456789.ap-south-1.elb.amazonaws.com`).
+* Copy the **DNS name** (e.g. `notes-alb-123456789.ap-southeast-2.elb.amazonaws.com`).
 * In **Target Groups**, click `notes-api-tg`: Confirm health check path is `/health` on port 8000.
 
 ---
@@ -278,8 +278,8 @@ All ingress rules must reference peer security group IDs to guarantee least-priv
 4. **Step 2: Choose instance types and network:**
    - **VPC:** Select `notes-vpc`.
    - **Availability Zones and subnets:** Select the two **private app subnets**:
-     - `notes-vpc-subnet-private1-ap-south-1a` (`10.0.10.0/24`)
-     - `notes-vpc-subnet-private2-ap-south-1b` (`10.0.11.0/24`)
+     - `notes-vpc-subnet-private1-ap-southeast-2a` (`10.0.10.0/24`)
+     - `notes-vpc-subnet-private2-ap-southeast-2b` (`10.0.11.0/24`)
    - Click **Next**.
 5. **Step 3: Configure advanced options:**
    - **Load balancing:** Select **Attach to an existing load balancer**.
@@ -331,20 +331,21 @@ All ingress rules must reference peer security group IDs to guarantee least-priv
 2. Open the **Amazon S3 Console** at [https://s3.console.aws.amazon.com/s3/](https://s3.console.aws.amazon.com/s3/).
 3. Click **Create bucket**:
    - **Bucket name:** `notes-frontend-app-<your_account_id>` (Must be globally unique).
-   - **AWS Region:** `ap-south-1` (Mumbai).
+   - **AWS Region:** `ap-southeast-2` (Sydney).
    - **Object Ownership:** ACLs disabled (recommended).
    - **Block Public Access:** **Block all public access** (Checked! CloudFront will use Origin Access Control).
    - **Bucket Versioning:** Optional / Enabled.
    - **Default encryption:** SSE-S3.
    - Click **Create bucket**.
 4. Open the created bucket $\to$ Click **Upload** $\to$ Upload all contents of `frontend/dist/` (`index.html`, `assets/`, etc.).
+   *(Or run: `powershell -File deploy/step2/deploy-frontend-s3.ps1 -BucketName notes-frontend-app-<your_account_id> -AwsRegion ap-southeast-2`)*.
 
 #### 7.2 Create CloudFront Distribution with Two Origins
 1. Open the **CloudFront Console** at [https://us-east-1.console.aws.amazon.com/cloudfront/v4/home](https://us-east-1.console.aws.amazon.com/cloudfront/v4/home).
 2. Click **Create distribution**.
 
 **Origin 1: S3 Bucket (Default Origin):**
-- **Origin domain:** Select your S3 bucket `notes-frontend-app-<account_id>.s3.ap-south-1.amazonaws.com`.
+- **Origin domain:** Select your S3 bucket `notes-frontend-app-<account_id>.s3.ap-southeast-2.amazonaws.com`.
 - **Origin access:** Select **Origin access control settings (recommended)**.
   - Click **Create control setting** $\to$ Name: `notes-s3-oac` $\to$ Click **Create**.
   - *(After creation, AWS will provide an S3 bucket policy prompt—we will paste it into S3 in the verify step)*.
@@ -364,7 +365,7 @@ All ingress rules must reference peer security group IDs to guarantee least-priv
 
 #### 7.3 Add Second Origin (ALB) and Path Behaviors
 1. Select the created distribution $\to$ Go to **Origins** tab $\to$ Click **Create origin**:
-   - **Origin domain:** Select your ALB (`notes-alb-123456789.ap-south-1.elb.amazonaws.com`).
+   - **Origin domain:** Select your ALB (`notes-alb-123456789.ap-southeast-2.elb.amazonaws.com`).
    - **Protocol:** `HTTP only` (or HTTPS if ACM cert attached).
    - **HTTP port:** `80`.
    - **Name:** `ALB-NotesAPI-Origin`.

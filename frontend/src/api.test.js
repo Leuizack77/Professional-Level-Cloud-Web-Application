@@ -1,9 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { api } from "./api.js";
+import { api, buildUrl } from "./api.js";
 
 test("frontend api client: listNotes constructs expected search URL and parses response", async () => {
-  // Mock fetch globally for testing
   const originalFetch = globalThis.fetch;
   let requestedUrl = null;
   let requestOptions = null;
@@ -59,3 +58,50 @@ test("frontend api client: createNote sends POST with JSON payload", async () =>
   }
 });
 
+test("frontend api client: buildUrl normalizes leading slashes and handles relative endpoints", () => {
+  assert.strictEqual(buildUrl("/api/notes"), "/api/notes");
+  assert.strictEqual(buildUrl("api/notes"), "/api/notes");
+  assert.strictEqual(buildUrl("/health/ready"), "/health/ready");
+});
+
+test("frontend api client: checkReadiness invokes /health/ready endpoint", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = null;
+
+  globalThis.fetch = async (url) => {
+    requestedUrl = url;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ ready: true, status: "ready", database: "connected" }),
+    };
+  };
+
+  try {
+    const result = await api.checkReadiness();
+    assert.strictEqual(requestedUrl, "/health/ready");
+    assert.strictEqual(result.ready, true);
+    assert.strictEqual(result.database, "connected");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("frontend api client: gateway errors (502 Bad Gateway) produce human-readable diagnostic messages", async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 502,
+    json: async () => null,
+  });
+
+  try {
+    await assert.rejects(
+      async () => await api.listNotes(),
+      { message: /Bad Gateway: Backend instances unreachable via ALB\/CloudFront/ }
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

@@ -10,13 +10,13 @@
 | Attribute | State / Value | Notes |
 |---|---|---|
 | **Project Name** | Cloud Notes (Professional-Level Cloud Web App) | Decoupled 3-Tier Architecture |
-| **Current Phase** | **Step 1 Ready for Console Provisioning** | Prep Phase: DONE; Step 1: Audited & Ready; Step 2: Documented |
+| **Current Phase** | **Step 1 Closed & Verified $\to$ Step 2 Stage 1 Complete & Verified** | Step 1: Live (`16.176.166.177`); Stage 1 Network: 100% Provisioned & Verified |
 | **Backend Stack** | FastAPI 0.110+ \| Python 3.11+ \| SQLAlchemy 2.0 \| Psycopg 3 | Stateless async REST API |
 | **Frontend Stack** | React 18.3+ \| Vite 5.2+ \| Modular CSS3 | Pure static SPA bundle in `frontend/dist/` |
-| **Database** | PostgreSQL 16 (Local Docker Compose \| RDS `db.t3.micro`) | Relational ACID, Alembic migrations |
+| **Database** | PostgreSQL 16 (Local Docker Compose \| RDS `db.t3.micro`) | Relational ACID, QueuePool pre-ping & recycle |
 | **Local Ports** | Frontend: `5173` \| API: `127.0.0.1:8000` \| DB: `127.0.0.1:5433` | Host DB collision safe (mapped `5433:5432`) |
-| **Target AWS Region**| **Asia Pacific (Mumbai) `ap-south-1`** | Single-AZ learning budget |
-| **Test Pass Rate** | **100% Pass** (11 Backend `pytest` + 2 Frontend `node:test`) | In-memory SQLite test isolation |
+| **Target AWS Region**| **Asia Pacific (Sydney) `ap-southeast-2`** | Active Step 1 host & Multi-AZ ready |
+| **Test Pass Rate** | **100% Pass** (16 Backend `pytest` + 5 Frontend `node:test`) | In-memory SQLite + Config suite |
 
 ---
 
@@ -28,7 +28,7 @@ flowchart TD
         Browser["User Browser"]
     end
 
-    subgraph Step1 ["Step 1: Single-Server Prototype (EC2 t3.micro - ap-south-1)"]
+    subgraph Step1 ["Step 1: Single-Server Prototype (EC2 t3.micro - ap-southeast-2)"]
         Nginx["Nginx (Port 80)"]
         SPA_Static["Static SPA (/var/www/notes-app/frontend/dist)"]
         FastAPI_S1["FastAPI Systemd Service (127.0.0.1:8000)"]
@@ -47,7 +47,7 @@ flowchart TD
         RDS["Amazon RDS PostgreSQL (Private DB Subnets)"]
 
         CF -->|"Default (*)"| S3
-        CF -->|"/api/* & /health"| ALB
+        CF -->|"/api/* & /health*"| ALB
         ALB --> ASG
         ASG --> RDS
     end
@@ -56,13 +56,17 @@ flowchart TD
     Browser -.->|"Step 2 HTTPS"| CF
 ```
 
-### Dual Health Probe Strategy
+### Triple Health Probe Strategy
 1. **Shallow Health (`GET /health`):**
    - **Contract:** Returns HTTP 200 with `{"status":"healthy","service":"notes-api","timestamp":"..."}`.
    - **Critical Invariant:** Must **never** query the database or import database sessions. Used by ALB / Nginx to determine if the web process is alive without cascading failures during database load spikes.
-2. **Deep Health (`GET /health/db`):**
-   - **Contract:** Executes `SELECT 1` on PostgreSQL.
-   - Returns HTTP 200 with `{"status":"healthy","database":"connected","timestamp":"..."}` on success.
+2. **Readiness Probe (`GET /health/ready`):**
+   - **Contract:** Verifies both application initialization and database connection pool connectivity.
+   - Returns HTTP 200 with `{"status":"ready","database":"connected","timestamp":"..."}` when ready.
+   - Returns HTTP 503 during startup or DB disruption to protect ASG target group lifecycle from prematurely routing traffic.
+3. **Deep Health (`GET /health/db`):**
+   - **Contract:** Executes `SELECT 1` on PostgreSQL and records execution latency.
+   - Returns HTTP 200 with `{"status":"healthy","database":"connected","dialect":"postgresql","latency_ms":...,"timestamp":"..."}` on success.
    - Returns HTTP 503 with generic error `{"status":"unhealthy","database":"disconnected","error":"Database connectivity check failed"}` on failure (never leaks raw DB tracebacks).
 
 ---
@@ -102,7 +106,8 @@ e:/PROJECTS/Professional-Level Cloud Web Application/
 │       ├── __init__.py               <-- Test package marker
 │       ├── conftest.py               <-- Pytest fixtures: in-memory SQLite isolation (no network DB)
 │       ├── test_api.py               <-- 10 integration tests: health, CRUD, validation, bounds, security
-│       └── test_example_health.py    <-- Example shallow health test fixture
+│       ├── test_example_health.py    <-- Example shallow health test fixture
+│       └── test_production_config.py <-- 5 unit tests: discrete DB params, pool config, /health/ready, URL schemes
 │
 ├── frontend/                         <-- Static Single Page Application Tier (S3 / Nginx target)
 │   ├── package.json                  <-- Node package config (React 18, Vite 5, native node:test)
@@ -113,17 +118,20 @@ e:/PROJECTS/Professional-Level Cloud Web Application/
 │   │   ├── App.jsx                   <-- Core UI: responsive note grid, create/edit modal, live health badges
 │   │   ├── App.css                   <-- Component CSS: cards, forms, modal geometry, badges
 │   │   ├── index.css                 <-- Global CSS variables & dark-theme design tokens
-│   │   ├── api.js                    <-- Fetch wrapper with relative endpoints (/api/notes, /health)
-│   │   └── api.test.js               <-- Native Node unit tests: URL building & payload dispatching
+│   │   ├── api.js                    <-- Fetch wrapper with relative endpoints (/api/notes, /health, /health/ready)
+│   │   └── api.test.js               <-- Native Node unit tests: URL building, readiness, and gateway errors
 │   └── dist/                         <-- Compiled static bundle generated by 'npm run build' (ignored in git)
 │
 ├── deploy/                           <-- Deployment & Server Provisioning Scripts
-│   ├── user-data.sh                  <-- Step 2: EC2 Launch Template user-data bootstrap (SSM credentials)
-│   └── step1/                        <-- Step 1: Single-server co-located deployment
-│       ├── setup-server.sh           <-- Automated AL2023 bootstrap (Nginx, PG16, Alembic, systemd)
-│       ├── nginx.conf                <-- Nginx proxy config: static frontend + /api & /health reverse proxy
-│       ├── api.service               <-- Systemd unit file for FastAPI daemon (127.0.0.1:8000)
-│       └── build-and-package.ps1     <-- Windows PowerShell script: builds frontend, creates deploy.zip
+│   ├── user-data.sh                  <-- Step 2: EC2 Launch Template user-data bootstrap (SSM credentials, multi-AZ)
+│   ├── step1/                        <-- Step 1: Single-server co-located deployment
+│   │   ├── setup-server.sh           <-- Automated AL2023 bootstrap (Nginx, PG16, Alembic, systemd)
+│   │   ├── nginx.conf                <-- Nginx proxy config: static frontend + /api & /health reverse proxy
+│   │   ├── api.service               <-- Systemd unit file for FastAPI daemon (127.0.0.1:8000)
+│   │   └── build-and-package.ps1     <-- Windows PowerShell script: builds frontend, creates deploy.zip
+│   └── step2/                        <-- Step 2: Production cloud migration automation
+│       ├── migrate-data-to-rds.sh    <-- Automated dump & restore script from Step 1 server to RDS
+│       └── deploy-frontend-s3.ps1    <-- S3 sync script with immutable caching headers for static assets
 │
 └── docs/                             <-- Architecture, Runbooks & Engineering Documentation
     ├── PRD.md                        <-- Product Requirements Document (features, local targets)
@@ -170,7 +178,8 @@ All endpoints serve JSON and return defensive security headers (`X-Content-Type-
 |---|---|---|---|---|---|
 | **GET** | `/` | None | `200 OK` | `{"status":"online","service":"Notes API"}` | Root API banner |
 | **GET** | `/health` | None | `200 OK` | `{"status":"healthy","service":"notes-api","timestamp":"<ISO>"}` | Shallow health probe (ALB / Nginx) |
-| **GET** | `/health/db` | None | `200 OK` / `503 Service Unavailable` | `{"status":"healthy","database":"connected","timestamp":"<ISO>"}` | Deep database connectivity probe |
+| **GET** | `/health/ready` | None | `200 OK` / `503 Service Unavailable` | `{"status":"ready","database":"connected","timestamp":"<ISO>"}` | ASG readiness probe (verifies app & DB pool) |
+| **GET** | `/health/db` | None | `200 OK` / `503 Service Unavailable` | `{"status":"healthy","database":"connected","dialect":"postgresql","latency_ms":...,"timestamp":"<ISO>"}` | Deep database connectivity probe |
 | **GET** | `/api/notes` | `q` (Optional string, $\le 100$ chars) | `200 OK` | `List[NoteResponse]` | Lists notes ordered by `updated_at DESC`. Filters by title/content if `q` provided. |
 | **POST** | `/api/notes` | `NoteCreate`: `{"title": str, "content": str}` | `201 Created` / `422 Unprocessable` | `NoteResponse` | Creates note. `title`: 1–255 chars; `content`: $\le 50,000$ chars. |
 | **GET** | `/api/notes/{id}` | Path param `id: int` | `200 OK` / `404 Not Found` | `NoteResponse` | Fetches single note by ID. |
@@ -301,6 +310,26 @@ powershell -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; [S
   - **Database:** Managed Amazon RDS PostgreSQL 16 (`db.t3.micro`, Single-AZ learning budget, `PubliclyAccessible = false`).
   - **Compute & Scaling:** EC2 Launch Template with dynamic SSM parameter retrieval ([`deploy/user-data.sh`](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/deploy/user-data.sh)); Auto Scaling Group (Min 2, Max 4) with CPU Target Tracking at 65%.
   - **Edge & Routing:** Private S3 bucket with Origin Access Control (OAC); dual-origin CloudFront distribution (`*` $\to$ S3, `/api/*` and `/health` $\to$ ALB).
+### 🌐 Step 2 Stage 1 Provisioned & Verified Network Resources (`ap-southeast-2`)
+
+| Resource | Resource Name | AWS Resource ID | Properties / Target | Status |
+|---|---|---|---|---|
+| **VPC** | `notes-vpc` | `vpc-054255999fbcd9aea` | `10.0.0.0/16`, DNS Hostnames: Yes, DNS Resolution: Yes | ✅ PASS |
+| **Public Subnet 1** | `notes-subnet-public1` | `subnet-0bc86c806d902fbb1` | `10.0.1.0/24` in `ap-southeast-2a` | ✅ PASS |
+| **Public Subnet 2** | `notes-subnet-public2` | `subnet-0f22c526c9766b062` | `10.0.2.0/24` in `ap-southeast-2b` | ✅ PASS |
+| **Private App Subnet 1** | `notes-subnet-app1` | `subnet-0902ed1c8c66eb80d` | `10.0.10.0/24` in `ap-southeast-2a` | ✅ PASS |
+| **Private App Subnet 2** | `notes-subnet-app2` | `subnet-039071a6c0a9357e3` | `10.0.11.0/24` in `ap-southeast-2b` | ✅ PASS |
+| **Private DB Subnet 1** | `notes-subnet-db1` | `subnet-0887479ad73933903` | `10.0.20.0/24` in `ap-southeast-2a` | ✅ PASS |
+| **Private DB Subnet 2** | `notes-subnet-db2` | `subnet-0eaf434b2aac6ae7a` | `10.0.21.0/24` in `ap-southeast-2b` | ✅ PASS |
+| **Internet Gateway** | `notes-igw` | `igw-04e8420ca2838b484` | Attached to `vpc-054255999fbcd9aea` | ✅ PASS |
+| **Public Route Table** | `notes-rtb-public` | `rtb-0a03844e7faea4dd5` | `0.0.0.0/0` $\to$ `notes-igw`, Subnets: public1, public2 | ✅ PASS |
+| **App Route Table** | `notes-rtb-app` | `rtb-0fb17a96f164be5cb` | Local only (Isolated), Subnets: app1, app2 | ✅ PASS |
+| **DB Route Table** | `notes-rtb-db` | `rtb-0b156673637dab8b4` | Local only (Zero internet egress), Subnets: db1, db2 | ✅ PASS |
+| **ALB Security Group** | `notes-sg-alb` | `sg-02ba97cf136f6f550` | Inbound: TCP 80 & 443 from `0.0.0.0/0` | ✅ PASS |
+| **App Security Group** | `notes-sg-app` | `sg-0cdd234f68a059f4a` | Inbound: TCP 8000 strictly from `notes-sg-alb` | ✅ PASS |
+| **DB Security Group** | `notes-sg-db` | `sg-051a95b1322bbb1c5` | Inbound: TCP 5432 strictly from `notes-sg-app`, Egress: None | ✅ PASS |
+| **Billable Exclusions**| NAT Gateways, EIPs, EC2, RDS | **0 Created** | Exactly \$0.00 / month cost footprint | ✅ PASS |
+
 - **Estimated Monthly Cost (Learning Budget):** $\approx \$46.54\text{/month}$ (1 NAT Gateway, 1 ALB, 2 `t3.micro` EC2, 1 `db.t3.micro` Single-AZ RDS).
 - **Runbook:** Follow click-by-click AWS Console steps in [docs/STEP2_RUNBOOK.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/STEP2_RUNBOOK.md).
 

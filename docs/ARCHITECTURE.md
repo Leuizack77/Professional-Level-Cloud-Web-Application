@@ -1,8 +1,8 @@
-# Cloud Architecture Specification (AWS ap-south-1)
+# Cloud Architecture Specification (AWS ap-southeast-2)
 
 ## 1. Executive Summary & Learning Budget Architecture
 
-This application follows a cloud-native, decoupled 3-tier architecture deployed on **Amazon Web Services (AWS)** in the **Asia Pacific (Mumbai) region (`ap-south-1`)** across **two Availability Zones (AZs)** within a dedicated **Virtual Private Cloud (VPC)**.
+This application follows a cloud-native, decoupled 3-tier architecture deployed on **Amazon Web Services (AWS)** in the **Asia Pacific (Sydney) region (`ap-southeast-2`)** across **two Availability Zones (AZs)** within a dedicated **Virtual Private Cloud (VPC)**.
 
 To accommodate a practical **learning and portfolio budget**, this specification configures cost-efficient resources:
 - **Single-AZ RDS PostgreSQL (`db.t3.micro`)** with automated nightly snapshots.
@@ -18,12 +18,12 @@ flowchart TD
     end
 
     subgraph Edge ["Global Edge Tier"]
-        CloudFront["Amazon CloudFront CDN (ap-south-1)"]
+        CloudFront["Amazon CloudFront CDN (ap-southeast-2)"]
         S3["Amazon S3 Bucket (Static Web Assets)"]
     end
 
-    subgraph AWS_VPC ["AWS Virtual Private Cloud (10.0.0.0/16 in ap-south-1)"]
-        subgraph AZ_A ["Availability Zone A (ap-south-1a)"]
+    subgraph AWS_VPC ["AWS Virtual Private Cloud (10.0.0.0/16 in ap-southeast-2)"]
+        subgraph AZ_A ["Availability Zone A (ap-southeast-2a)"]
             subgraph Public_Subnet_A ["Public Subnet A (10.0.1.0/24)"]
                 ALB_A["ALB Node A"]
                 NAT_A["Shared NAT Gateway"]
@@ -36,7 +36,7 @@ flowchart TD
             end
         end
 
-        subgraph AZ_B ["Availability Zone B (ap-south-1b)"]
+        subgraph AZ_B ["Availability Zone B (ap-southeast-2b)"]
             subgraph Public_Subnet_B ["Public Subnet B (10.0.2.0/24)"]
                 ALB_B["ALB Node B"]
             end
@@ -103,12 +103,16 @@ flowchart TD
 * **Cache Policy:** `Managed-CachingDisabled` (ensures mutations, searches, and data queries are never served from stale edge caches).
 * **Origin Request Policy:** `Managed-AllViewerExceptHostHeader` (preserves client query strings, request headers, and authentication tokens while letting ALB receive the proper Host header).
 
-### 3. Health Probe Cache Behavior (`/health` & `/health/*`) $\to$ Application Load Balancer
+### 3. Health Probe Cache Behavior (`/health`, `/health/ready`, & `/health/db`) $\to$ Application Load Balancer
 * **Target Origin:** Application Load Balancer (`ALB`).
 * **Path Pattern:** `/health*`.
 * **Viewer Protocol Policy:** `Redirect HTTP to HTTPS`.
 * **Allowed HTTP Methods:** `GET, HEAD`.
 * **Cache Policy:** `Managed-CachingDisabled` (guarantees external monitoring and health checks reflect instantaneous compute/DB status).
+* **Probe Roles:**
+  - `GET /health`: Shallow check (HTTP 200, zero DB queries) used for high-frequency ALB target group viability checks.
+  - `GET /health/ready`: Readiness check ensuring application is initialized and database connection pool is warmed up before accepting user traffic.
+  - `GET /health/db`: Deep check executing `SELECT 1` with latency telemetry in ms for administrative diagnostics.
 
 ---
 
@@ -165,11 +169,11 @@ All ingress is governed by strict, least-privilege security group references (re
 
 | Parameter | Development (Local) | Staging | Production (Learning Budget) |
 |---|---|---|---|
-| **Region** | Host Machine | `ap-south-1` (Mumbai) | `ap-south-1` (Mumbai) |
+| **Region** | Host Machine | `ap-southeast-2` (Sydney) | `ap-southeast-2` (Sydney) |
 | **Frontend Origin** | Vite Dev Server (`localhost:5173`) | S3 Bucket + CloudFront Distribution | S3 Bucket + CloudFront Distribution |
 | **API Compute** | Host Python Virtual Environment | 1 x `t3.micro` EC2 instance | ASG (2 x `t3.micro`), min: 2, max: 4 |
 | **Database** | Docker PostgreSQL 16 container (`localhost:5433`) | RDS PostgreSQL 16 `db.t3.micro` (Single-AZ) | RDS PostgreSQL 16 `db.t3.micro` (Single-AZ) |
-| **NAT Egress** | Host Gateway | 1 Shared NAT Gateway (`ap-south-1a`) | 1 Shared NAT Gateway (`ap-south-1a`) |
+| **NAT Egress** | Host Gateway | 1 Shared NAT Gateway (`ap-southeast-2a`) | 1 Shared NAT Gateway (`ap-southeast-2a`) |
 | **Secrets Delivery** | `.env` file (Git-ignored) | AWS Systems Manager / Secrets Manager | AWS Secrets Manager (No auto-rotation in MVP) |
 | **SSL/TLS** | Plain HTTP | ACM Wildcard Certificate (`*.staging.example.com`) | ACM Wildcard Certificate |
 | **Logging Level** | `DEBUG` | `INFO` (CloudWatch Logs) | `INFO` (CloudWatch Logs) |
@@ -183,44 +187,46 @@ flowchart LR
     M1["Step 1: Single Server Deploy"] --> M2["Step 2: Production-Style Decoupled"] --> M3["Step 3: Automated Terraform"]
 ```
 
-### Step 1: Single Server Deploy (MVP Sanity Check)
+### Step 1: Single Server Deploy (MVP Sanity Check - Verified & Active)
 * **Goal:** Prove the application works in a live cloud environment with minimal moving parts.
-* **Architecture:** One `t3.micro` EC2 instance in a public subnet running Nginx and FastAPI with SQLite or containerized PostgreSQL.
+* **Architecture:** One `t3.micro` EC2 instance in a public subnet running Nginx and FastAPI with local PostgreSQL 16.
+* **Live Deployment:** Running on `ap-southeast-2` (Sydney) at `16.176.166.177`.
 
 ### Step 2: Production-Style Decoupled Architecture (Manual Console Baseline)
-* **Goal:** Implement the full 3-tier production topology in `ap-south-1`.
+* **Goal:** Implement the full 3-tier production topology in `ap-southeast-2`.
 * **Architecture:**
   - S3 + CloudFront dual-origin routing (`/*` $\to$ S3, `/api/*` $\to$ ALB).
-  - Dedicated VPC with 2 Public, 2 Private App, and 2 Private DB subnets across `ap-south-1a` and `ap-south-1b`.
+  - Dedicated VPC (`notes-vpc`) with 2 Public, 2 Private App, and 2 Private DB subnets across `ap-southeast-2a` and `ap-southeast-2b`.
   - Internet-facing ALB routing to EC2 instances in private subnets.
-  - Single-AZ RDS PostgreSQL `db.t3.micro` in private database subnets.
-  - 1 NAT Gateway in Public Subnet A for backend outbound updates.
+  - Single-AZ RDS PostgreSQL `db.t3.micro` in private database subnets with connection pool pre-ping and recycle.
+  - 1 NAT Gateway in Public Subnet A for backend outbound updates (or cost-saving NAT instance).
 
 ### Step 3: Infrastructure as Code with Terraform (Bonus / Automation Step)
 * **Goal:** Declare 100% of the infrastructure in version-controlled Terraform modules.
 
 ---
 
-## 7. Recalculated Monthly Cost Breakdown (AWS ap-south-1 — Learning Budget)
+## 7. Recalculated Monthly Cost Breakdown (AWS ap-southeast-2 — Learning Budget)
 
-*Estimates based on standard AWS on-demand pricing in Mumbai (`ap-south-1`):*
+*Estimates based on standard AWS on-demand pricing in Sydney (`ap-southeast-2`):*
 
 | Component | AWS Resource | Specification & Sizing | Est. Monthly Cost (USD) |
 |---|---|---|---|
 | **Frontend Storage** | Amazon S3 | 5 GB storage, 50,000 GET/PUT requests | \$0.15 |
 | **Content Delivery** | Amazon CloudFront | 50 GB transfer out, 1,000,000 HTTPS requests (Covered by Free Tier; standard est.) | \$1.50 |
 | **DNS & Routing** | Amazon Route 53 | 1 Hosted Zone + queries | \$0.90 |
-| **Load Balancer** | Application Load Balancer | 1 ALB, ~1.5 LCU average usage | \$21.40 |
-| **Backend Compute** | EC2 Instances (ASG) | 2 x `t3.micro` (2 vCPU, 1 GB RAM; \$0.0104/hr * 730 * 2) | \$15.18 |
-| **Relational Database** | Amazon RDS PostgreSQL | `db.t3.micro` Single-AZ (\$0.018/hr * 730) + 20 GB gp3 storage | \$15.44 |
-| **Egress / NAT** | AWS NAT Gateway | 1 NAT Gateway (\$0.045/hr * 730) + 5 GB processed data | \$33.08 |
+| **Load Balancer** | Application Load Balancer | 1 ALB, ~1.5 LCU average usage | \$22.50 |
+| **Backend Compute** | EC2 Instances (ASG) | 2 x `t3.micro` (2 vCPU, 1 GB RAM; \$0.0132/hr * 730 * 2) | \$19.27 |
+| **Relational Database** | Amazon RDS PostgreSQL | `db.t3.micro` Single-AZ (\$0.021/hr * 730) + 20 GB gp3 storage | \$17.83 |
+| **Egress / NAT** | AWS NAT Gateway | 1 NAT Gateway (\$0.048/hr * 730) + 5 GB processed data | \$35.29 |
 | **Observability** | Amazon CloudWatch | Basic log ingestion and metric alarms | \$2.50 |
-| **Total Estimated Learning Cost** | | | **~\$90.15 / month** |
+| **Total Estimated Learning Cost** | | | **~\$99.94 / month** |
 
 > [!TIP]
 > **Further Cost Optimization Options:**
-> - **Replacing NAT Gateway with a NAT Instance (`fck-nat` or `t4g.nano`):** Drops the monthly NAT cost from \$33.08 to **~\$3.20/month**, bringing the total stack down to **~\$60.27/month**.
-> - **Stopping resources when not actively testing:** Stopping the RDS instance and scaling the ASG to 0 during off-hours reduces the active bill to under **\$30/month**.
+> - **Replacing NAT Gateway with a NAT Instance (`fck-nat` or `t4g.nano`):** Drops the monthly NAT cost from \$35.29 to **~\$3.50/month**, bringing the total stack down to **~\$68.15/month**.
+> - **Zero-NAT Architecture (Stage 1 Default):** Launch without NAT gateway and use Golden AMI or S3 gateway endpoint for dependency staging to keep monthly compute+DB costs under **\$40/month**.
+> - **Stopping resources when not actively testing:** Stopping the RDS instance and scaling the ASG to 0 during off-hours reduces the active bill to under **\$25/month**.
 
 ---
 
@@ -253,5 +259,7 @@ To maintain strict cost control during initial development, advanced production 
 | **ADR-04** | **Single-AZ RDS `db.t3.micro` for Learning Budget** | Cuts database operational cost by 70% while preserving 100% PostgreSQL 16 engine compatibility. |
 | **ADR-05** | **One Shared NAT Gateway in AZ A** | Saves \$33/month over deploying redundant NAT Gateways during the learning phase. |
 | **ADR-06** | **Two Dedicated Subnets per AZ (Public, Private App, Private DB)** | Strict network segregation so databases have zero internet route tables. |
-| **ADR-07** | **Dual Health Probes (`/health` vs `/health/db`)** | Shallow check keeps ALB fast and independent of DB spikes; deep check monitors DB viability. |
+| **ADR-07** | **Triple Health Probes (`/health`, `/health/ready`, `/health/db`)** | Shallow check keeps ALB fast; readiness check gates ASG lifecycle; deep check monitors DB viability. |
 | **ADR-08** | **Security Group Chaining over IP CIDRs** | Eliminates fragile hardcoded IP addresses and guarantees only authenticated ALB traffic reaches compute. |
+| **ADR-09** | **SQLAlchemy QueuePool with Pre-Ping & 1800s Recycle** | Prevents stale connection drops behind AWS VPC NAT and firewalls during idle periods. |
+| **ADR-10** | **Discrete Database Environment Parameters with URL Encoding** | Allows separate host, user, password, and port injection via SSM without parsing brittle raw connection strings. |
