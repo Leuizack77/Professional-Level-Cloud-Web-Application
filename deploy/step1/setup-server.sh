@@ -53,12 +53,12 @@ dnf install -y python3.11 python3.11-pip python3.11-devel git gcc nginx unzip
 # Install PostgreSQL 16 (or available release on AL2023)
 if dnf list postgresql16-server >/dev/null 2>&1; then
     dnf install -y postgresql16-server postgresql16
-    PG_SERVICE="postgresql-16"
-    PG_SETUP="postgresql-16-setup"
+    PG_SERVICE="postgresql"
+    PG_SETUP="postgresql-setup"
 elif dnf list postgresql15-server >/dev/null 2>&1; then
     dnf install -y postgresql15-server postgresql15
-    PG_SERVICE="postgresql-15"
-    PG_SETUP="postgresql-15-setup"
+    PG_SERVICE="postgresql"
+    PG_SETUP="postgresql-setup"
 else
     dnf install -y postgresql-server postgresql
     PG_SERVICE="postgresql"
@@ -98,8 +98,10 @@ systemctl is-active --quiet "${PG_SERVICE}" || {
     exit 1
 }
 
-# Create compatibility symlink for postgresql.service
-ln -sf "/usr/lib/systemd/system/${PG_SERVICE}.service" /etc/systemd/system/postgresql.service 2>/dev/null || true
+# Create compatibility symlink for postgresql.service if service name differs
+if [ "${PG_SERVICE}" != "postgresql" ]; then
+    ln -sf "/usr/lib/systemd/system/${PG_SERVICE}.service" /etc/systemd/system/postgresql.service 2>/dev/null || true
+fi
 
 # Configure postgresql.conf to strictly bind to loopback 127.0.0.1
 PG_CONF=$(find /var/lib/pgsql -name "postgresql.conf" 2>/dev/null | head -n 1)
@@ -128,9 +130,9 @@ fi
 echo "[3/8] Provisioning database 'notes_db' and user 'notes_user'..."
 USER_EXISTS=$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='notes_user'" || echo "0")
 if [ "${USER_EXISTS}" != "1" ]; then
-    sudo -u postgres psql -v v_pass="${DB_PASS}" -c "CREATE USER notes_user WITH PASSWORD :'v_pass';"
+    sudo -u postgres psql -c "CREATE USER notes_user WITH PASSWORD '${DB_PASS}';"
 else
-    sudo -u postgres psql -v v_pass="${DB_PASS}" -c "ALTER USER notes_user WITH PASSWORD :'v_pass';"
+    sudo -u postgres psql -c "ALTER USER notes_user WITH PASSWORD '${DB_PASS}';"
 fi
 
 DB_EXISTS=$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='notes_db'" || echo "0")

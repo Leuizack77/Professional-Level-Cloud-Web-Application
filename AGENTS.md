@@ -1,7 +1,7 @@
 # AGENTS.md — AI Agent Guidelines & Repository Manual
 
 ## 1. Project Summary
-The **Professional-Level Cloud Web Application** is a decoupled full-stack Notes system engineered for high availability on AWS. It features a static Single Page Application frontend (React + Vite) intended for Amazon S3 and CloudFront CDN, an asynchronous REST API (FastAPI) designed for an EC2 Auto Scaling Group behind an Application Load Balancer inside a private VPC, and a relational data tier (Amazon RDS PostgreSQL). For complete architectural topology and system sequence diagrams, refer directly to [README.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/README.md) and [docs/ARCHITECTURE.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/ARCHITECTURE.md).
+The **Professional-Level Cloud Web Application** is a decoupled full-stack Notes system engineered for high availability on AWS. It features a static Single Page Application frontend (React + Vite) intended for Amazon S3 and CloudFront CDN, an asynchronous REST API (FastAPI) designed for an EC2 Auto Scaling Group behind an Application Load Balancer inside a private VPC, and a relational data tier (Amazon RDS PostgreSQL). For complete architectural topology, pre-compiled system state, and master codebase map, refer directly to [BRAIN.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/BRAIN.md), [README.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/README.md) and [docs/ARCHITECTURE.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/ARCHITECTURE.md).
 
 ---
 
@@ -9,6 +9,7 @@ The **Professional-Level Cloud Web Application** is a decoupled full-stack Notes
 
 | Task Type | Primary Document to Read First | Key Details to Check |
 |---|---|---|
+| Complete codebase map, schemas, contracts & mental model | [BRAIN.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/BRAIN.md) | Master pre-compiled index, endpoint matrix, all file roles, commands |
 | Cloud infra, VPC, ALB, ASG, or deployment | [docs/ARCHITECTURE.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/ARCHITECTURE.md), [docs/STEP1_RUNBOOK.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/STEP1_RUNBOOK.md), [docs/STEP2_RUNBOOK.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/STEP2_RUNBOOK.md) | Subnet CIDRs, Security Group chains, console runbooks, costs |
 | Requirements, features, roadmap, phases | [docs/PRD.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/PRD.md), [docs/PHASES.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/PHASES.md) | User stories, acceptance criteria, phase gates |
 | Engineering rules, UI tokens, state memory | [docs/RULES.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/RULES.md), [docs/DESIGN.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/DESIGN.md), [docs/MEMORY.md](file:///e:/PROJECTS/Professional-Level%20Cloud%20Web%20Application/docs/MEMORY.md) | Prohibitions, color tokens, living context tracker |
